@@ -265,7 +265,7 @@ SHELL_SIGS = [
         r"\brequests\.get\(", r"\burlopen\(",
     ]),
 ]
-_SHELL_C = [(sid, name, base, desc, [re.compile(r, re.I if sid not in ("obfuscated_blob",) else 0) for r in rxs])
+_SHELL_C = [(sid, name, base, desc, [re.compile(r, re.I if sid not in ("obfuscated_blob", "env_dump") else 0) for r in rxs])
             for sid, name, base, desc, rxs in SHELL_SIGS]
 # Cheap per-window prefilter: a signature group only runs when one of its keywords is present.
 NEEDLES = {
@@ -304,7 +304,7 @@ def _shift(base, ctx, sid):
     if ctx == "container":
         return max(0, base - (1 if sid in ("exfil_host", "reverse_shell") else 2))
     if ctx == "instruction":
-        return {"reverse_shell": 3, "decode_execute": 3, "exfil_host": 3, "persistence": 2,
+        return {"reverse_shell": 3, "decode_execute": 3, "exfil_host": 1, "persistence": 1,
                 "powershell_encoded": 2, "git_config_hijack": 2, "env_dump": 0}.get(sid, 1)
     if ctx == "package":
         return min(base, 2)
@@ -408,15 +408,15 @@ INJECTION_SIGS = [
         r"\b(?:do\s+not|don'?t|never|must\s+not)\s+(?:mention|reveal|disclose|show|report)\s+(?:this|these|it|that|the\s+(?:following|instructions?|step|commands?|changes?))\b[^.\n]{0,40}\bto\s+" + _USER,
         r"\bwithout\s+(?:telling|informing|notifying|alerting)\s+" + _USER,
         r"\bkeep\s+(?:this|these|it)\s+(?:secret|hidden|confidential)\s+from\s+" + _USER,
-        r"\b" + _USER + r"\s+(?:must|should)\s+(?:not|never)\s+(?:know|see|find\s+out|be\s+told|notice)\b",
+        r"\b" + _USER + r"\s+(?:must|should)\s+(?:not|never)\s+(?:know|see|find\s+out|be\s+told|notice)\s+(?:about\s+)?(?:this|these|it\b|that\s+you|what\s+you|the\s+(?:instruction|step|command|change|hook|script|request))",
         r"\b(?:hide|conceal)\s+(?:this|these|it|the\s+(?:commands?|changes?|output))\s+from\s+" + _USER,
     ]),
     ("covert_action", "Covert Action", 3, "Asks the agent to act silently or secretly", [
         r"\b(?:silently|secretly|covertly|stealthily|quietly)\s+(?:also\s+)?(?:run|execute|install|download|add|insert|send|upload|post|exfiltrate|modify|change|commit|push|curl|fetch|copy)\b",
     ]),
     ("data_send", "Instruction to Send Secrets", 4, "Instructs the agent to send secrets/credentials to an external destination", [
-        r"\b(?:send|post|upload|exfiltrate|forward|transmit|leak|copy|pipe|submit)\w{0,3}\b[^\n]{0,80}?(?:\.env\b|environment\s+variables|\bsecrets?\b|api[\s_-]?keys?|\btokens?\b|credentials|ssh\s+keys?|private\s+keys?|id_rsa|\.aws|wallet|seed\s+phrase)[^\n]{0,100}?(?:https?://|wss?://|webhook|discord\.com/api|t\.me/|@[\w-]{1,40}\.[a-z]{2,})",
-        r"(?:\.env\b|environment\s+variables|\bsecrets?\b|api[\s_-]?keys?|credentials|ssh\s+keys?|private\s+keys?)[^\n]{0,80}?\b(?:send|post|upload|exfiltrate|forward|transmit)\w{0,3}\b[^\n]{0,60}?(?:https?://|webhook|@[\w-]{1,40}\.[a-z]{2,})",
+        r"\b(?:send|post|upload|exfiltrate|forward|transmit|leak|copy|pipe|submit)\w{0,3}\b[^\n]{0,80}?(?:\.env\b|environment\s+variables|\bsecrets?\b|api[\s_-]?keys?|\btokens?\b|credentials|ssh\s+keys?|private\s+keys?|id_rsa|\.aws|wallet|seed\s+phrase)[^\n]{0,100}?(?:https?://|wss?://|discord(?:app)?\.com/api|t\.me/)",
+        r"(?:\.env\b|environment\s+variables|\bsecrets?\b|api[\s_-]?keys?|credentials|ssh\s+keys?|private\s+keys?)[^\n]{0,80}?\b(?:send|post|upload|exfiltrate|forward|transmit)\w{0,3}\b[^\n]{0,60}?(?:https?://|wss?://)",
     ]),
     ("safety_bypass", "Safety Bypass Instruction", 2, "Tells the agent to disable confirmations, sandboxing or permission checks", [
         r"\b(?:disable|bypass|turn\s+off|skip|circumvent)\s+(?:all\s+|any\s+|the\s+)?(?:safety|security|permission|confirmation|approval|sandbox)\s+(?:checks?|prompts?|guards?|rules|restrictions|mode)\b",
@@ -432,7 +432,10 @@ _INJ_C = [(sid, name, base, desc, [re.compile(r, re.I | re.M) for r in rxs]) for
 HTML_COMMENT = re.compile(r"<!--(.{0,4000}?)-->", re.S)
 AGENT_WORDS = re.compile(r"\b(?:AI|agent|assistant|claude|copilot|cursor|LLM|model|codex|gemini)\b", re.I)
 IMPERATIVE = re.compile(r"\b(?:must|always|never|ignore|run|execute|do\s+not|don'?t|instead|before\s+(?:any|each|every))\b", re.I)
-MODAL = re.compile(r"\b(?:can|could|may|might|will|would|should|to|it|that|which|not|never|otherwise|or)\s+(?:\w+\s+){0,2}$", re.I)
+MODAL = re.compile(r"\b(?:can|could|may|might|will|would|should|to|it|that|which|not|never|otherwise|or)\s+(?:[\w,]+\s+){0,3}$", re.I)
+ACTION = re.compile(r"\b(?:run|runs|running|execut\w*|install\w*|download\w*|upload\w*|send\w*|post\w*|curl|wget|script|command|hook|"
+                    r"commit|push|modif\w*|delete|remove|add|insert|token|key|secret|credential|env\b|\.env|step|exfiltrat\w*|"
+                    r"telemetry|tracking|network|request)\b", re.I)
 SCOPED = re.compile(r"\s*(?:for|when|regarding|about|on|in)\s+\w", re.I)
 QUOTED = re.compile(r"[\"'`“”‘’]")
 
@@ -462,6 +465,12 @@ def analyze_instructions(text, file):
                         sev = 0
                     if sid == "instruction_override" and sev and SCOPED.match(seg[m.end():m.end() + 40]):
                         sev = 2
+                    if sid == "concealment" and sev:
+                        a = max(seg.rfind(c, 0, m.start()) for c in ".;!?\n")
+                        bs = [seg.find(c, m.end()) for c in ".;!?\n"]
+                        b = min([x for x in bs if x >= 0] or [len(seg)])
+                        if not ACTION.search(seg[a + 1:b]):
+                            sev = 2
                     out.append(_item(SEV[sev], sid, name, desc, file, ln, m.group(0), line.strip()))
                     if sev:
                         ids.add(sid)
