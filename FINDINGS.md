@@ -28,7 +28,7 @@ rate was driven down on one set and then measured on a held-out set before any n
 4. **Calibration set:** the first 1,000 qualifying repos by stars (477,966 → 22,914 ★). Rules
    were tuned on these only.
 5. **Held-out set:** the next 328 qualifying repos (22,907 → 17,804 ★). These were scanned
-   **once**, with the rules frozen in commit `f6b2d27` before the scan.
+   **once**, with the rules frozen in commit `4f39c14` before the scan (engine file SHA-1 `131026e3`, unchanged since).
 6. **Scope:** root-level surfaces and config directories. Nested `AGENTS.md`/`CLAUDE.md` files
    in subfolders were not fetched in corpus mode. The tool itself does scan them in a local
    checkout or with `--github`.
